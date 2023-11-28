@@ -1,90 +1,130 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
-void swap(int *a, int *b) {
+// Estrutura para armazenar estatísticas de trocas e comparações
+struct Estatisticas {
+    int trocas;
+    int comparacoes;
+};
+
+// Função para trocar dois elementos
+void trocar(int *a, int *b, struct Estatisticas *estatisticas) {
     int temp = *a;
     *a = *b;
     *b = temp;
+    estatisticas->trocas++;
 }
 
-int partition(int A[], int left, int right, int *comparisons) {
-    int pivotIndex = (left + right) / 2;
+// Função que particiona o array e retorna o índice do pivô
+int particionar(int arr[], int baixo, int alto, struct Estatisticas *estatisticas) {
+    int pivô = arr[alto];
+    int i = (baixo - 1);
 
-    if (A[pivotIndex] < A[left]) {
-        swap(&A[pivotIndex], &A[left]);
-    }
-    if (A[right] < A[left]) {
-        swap(&A[right], &A[left]);
-    }
-    if (A[right] < A[pivotIndex]) {
-        swap(&A[right], &A[pivotIndex]);
-    }
-
-    swap(&A[pivotIndex], &A[right - 1]);
-
-    int pivot = A[right - 1];
-    int i = left;
-    int j = right - 1;
-
-    while (1) {
-        while (A[++i] < pivot) {
-            (*comparisons)++;
-        }
-
-        while (A[--j] > pivot) {
-            (*comparisons)++;
-        }
-
-        if (i < j) {
-            swap(&A[i], &A[j]);
-        } else {
-            break;
+    for (int j = baixo; j <= alto - 1; j++) {
+        estatisticas->comparacoes++;
+        if (arr[j] < pivô) {
+            i++;
+            trocar(&arr[i], &arr[j], estatisticas);
         }
     }
-
-    swap(&A[i], &A[right - 1]);
-
-    return i;
+    trocar(&arr[i + 1], &arr[alto], estatisticas);
+    return (i + 1);
 }
 
-void quicksort(int A[], int left, int right, int *comparisons, int *swaps) {
-    if (left + 10 <= right) {
-        int pivotIndex = partition(A, left, right, comparisons);
-        quicksort(A, left, pivotIndex - 1, comparisons, swaps);
-        quicksort(A, pivotIndex + 1, right, comparisons, swaps);
-    } else {
-        
-        for (int i = left + 1; i <= right; i++) {
-            int j = i;
-            int temp = A[i];
-            (*comparisons)++;
-            while (j > left && temp < A[j - 1]) {
-                A[j] = A[j - 1];
-                (*swaps)++;
-                j--;
-            }
-            A[j] = temp;
-            (*swaps)++;
-        }
+// Função principal do Quick Sort
+void quickSort(int arr[], int baixo, int alto, struct Estatisticas *estatisticas) {
+    if (baixo < alto) {
+        // Encontrar o índice do pivô
+        int pi = particionar(arr, baixo, alto, estatisticas);
+
+        // Separadamente ordenar elementos antes e depois do pivô
+        quickSort(arr, baixo, pi - 1, estatisticas);
+        quickSort(arr, pi + 1, alto, estatisticas);
     }
+}
+
+// Função para imprimir o array
+void imprimirArray(int arr[], int tamanho) {
+    for (int i = 0; i < tamanho; i++)
+        printf("%d ", arr[i]);
+    printf("\n");
+}
+
+// Função para preencher o array com valores aleatórios
+void preencherAleatoriamente(int arr[], int tamanho) {
+    for (int i = 0; i < tamanho; i++)
+        arr[i] = rand() % 1000; // Valores aleatórios entre 0 e 999
+}
+
+// Função para preencher o array em ordem crescente
+void preencherOrdenadoCrescente(int arr[], int tamanho) {
+    for (int i = 0; i < tamanho; i++)
+        arr[i] = i;
+}
+
+// Função para preencher o array em ordem decrescente
+void preencherOrdenadoDecrescente(int arr[], int tamanho) {
+    for (int i = 0; i < tamanho; i++)
+        arr[i] = tamanho - i - 1;
 }
 
 int main() {
-    
-    int arr[] = {64, 25, 12, 22, 11};
-    int n = sizeof(arr) / sizeof(arr[0]);
+    srand(time(NULL));
 
-    int comparisons = 0, swaps = 0;
+    // Tamanhos do array
+    int tamanhos[] = {1000, 10000, 100000};
+    int num_tamanhos = sizeof(tamanhos) / sizeof(tamanhos[0]);
 
-    quicksort(arr, 0, n - 1, &comparisons, &swaps);
+    for (int i = 0; i < num_tamanhos; i++) {
+        int tamanho = tamanhos[i];
 
-    printf("Sorted array: ");
-    for (int i = 0; i < n; i++) {
-        printf("%d ", arr[i]);
+        // Alocar e preencher arrays para cada caso
+        int *arrMelhorCaso = (int *)malloc(tamanho * sizeof(int));
+        int *arrCasoMedio = (int *)malloc(tamanho * sizeof(int));
+        int *arrPiorCaso = (int *)malloc(tamanho * sizeof(int));
+
+        preencherOrdenadoCrescente(arrMelhorCaso, tamanho);
+        preencherAleatoriamente(arrCasoMedio, tamanho);
+        preencherOrdenadoDecrescente(arrPiorCaso, tamanho);
+
+        // Inicializar estatísticas
+        struct Estatisticas estatisticasMelhorCaso = {0, 0};
+        struct Estatisticas estatisticasCasoMedio = {0, 0};
+        struct Estatisticas estatisticasPiorCaso = {0, 0};
+
+        // Medir tempo e executar o Quick Sort para cada caso
+        clock_t inicio, fim;
+
+        // Melhor Caso
+        inicio = clock();
+        quickSort(arrMelhorCaso, 0, tamanho - 1, &estatisticasMelhorCaso);
+        fim = clock();
+        double tempoMelhorCaso = ((double)(fim - inicio)) / CLOCKS_PER_SEC;
+
+        // Caso Médio
+        inicio = clock();
+        quickSort(arrCasoMedio, 0, tamanho - 1, &estatisticasCasoMedio);
+        fim = clock();
+        double tempoCasoMedio = ((double)(fim - inicio)) / CLOCKS_PER_SEC;
+
+        // Pior Caso
+        inicio = clock();
+        quickSort(arrPiorCaso, 0, tamanho - 1, &estatisticasPiorCaso);
+        fim = clock();
+        double tempoPiorCaso = ((double)(fim - inicio)) / CLOCKS_PER_SEC;
+
+        // Imprimir resultados
+        printf("\nTamanho do Array: %d\n", tamanho);
+        printf("Melhor Caso: Tempo = %f s, Trocas = %d, Comparacoes = %d\n", tempoMelhorCaso, estatisticasMelhorCaso.trocas, estatisticasMelhorCaso.comparacoes);
+        printf("Caso Médio: Tempo = %f s, Trocas = %d, Comparacoes = %d\n", tempoCasoMedio, estatisticasCasoMedio.trocas, estatisticasCasoMedio.comparacoes);
+        printf("Pior Caso: Tempo = %f s, Trocas = %d, Comparacoes = %d\n", tempoPiorCaso, estatisticasPiorCaso.trocas, estatisticasPiorCaso.comparacoes);
+
+        // Liberar memória alocada para os arrays
+        free(arrMelhorCaso);
+        free(arrCasoMedio);
+        free(arrPiorCaso);
     }
-    printf("\n");
-
-    printf("Comparisons: %d\n", comparisons);
-    printf("Swaps: %d\n", swaps);
 
     return 0;
 }
